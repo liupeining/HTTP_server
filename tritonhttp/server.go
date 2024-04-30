@@ -2,6 +2,7 @@ package tritonhttp
 
 import (
 	"fmt"
+	"net"
 	"os"
 )
 
@@ -43,7 +44,40 @@ func (s *Server) ListenAndServe() error {
 	}
 	fmt.Println("Server setup valid!")
 
-	// Hint: create your listen socket and spawn off goroutines per incoming client
-	// panic("todo")
+	// server should now start to listen on the configured address
+	addr := "localhost" + s.Addr
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("error in listening on : %v", addr, err)
+	}
+	fmt.Println("Listening on", ln.Addr())
+
+	// making sure the listener is closed when we exit
+	defer func() {
+		err = ln.Close()
+		if err != nil {
+			fmt.Println("error in closing listener", err)
+		}
+	}()
+
+	// accept connections forever
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			continue
+		}
+		fmt.Println("accepted connection", conn.RemoteAddr())
+		go s.HandleConnection(conn)
+		if conn != nil {
+			conn.Close()
+			break
+		}
+	}
 	return nil
+}
+
+// HandleConnection reads requests from the accepted conn and handles them.
+func (s *Server) HandleConnection(conn net.Conn) {
+	// now doing nothing
+	_ = conn.Close()
 }
