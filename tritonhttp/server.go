@@ -107,7 +107,7 @@ func (s *Server) HandleConnection(conn net.Conn) {
 
 			// Respond with 400 client error
 			res.HandleBadRequest()
-			//_ = res.Write(conn)
+			err = res.Write(conn)
 
 			// check res
 			fmt.Println("Response: ", res)
@@ -118,6 +118,7 @@ func (s *Server) HandleConnection(conn net.Conn) {
 		fmt.Println("Virtual Hosts: ", s.VirtualHosts)
 		fmt.Println("path: ", s.VirtualHosts[req.Host])
 		res.HandleOK(s.VirtualHosts[req.Host], req) // pass the docRoot of the host to HandleOK
+		err = res.Write(conn)
 		// check res
 		fmt.Println("Response: ", res)
 	}

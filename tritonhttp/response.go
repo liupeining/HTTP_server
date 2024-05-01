@@ -1,10 +1,13 @@
 package tritonhttp
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -79,4 +82,46 @@ func (res *Response) HandleOK(docRoot string, req *Request) {
 	res.Headers["Content-Type"] = mime.TypeByExtension(filepath.Ext(res.FilePath))
 	res.Headers["Date"] = FormatTime(time.Now())
 	res.Headers["Last-Modified"] = FormatTime(stats.ModTime())
+}
+
+func (res *Response) Write(w io.Writer) error {
+	// Write the response line
+	bw := bufio.NewWriter(w)
+	statusLine := fmt.Sprintf("%v %v %v\r\n", res.Proto, res.StatusCode, res.StatusText)
+	if _, err := bw.WriteString(statusLine); err != nil {
+		return err
+	}
+	// Write Headers
+	headers := res.Headers
+	headerKeys := make([]string, 0)
+	for key, _ := range headers {
+		headerKeys = append(headerKeys, key)
+	}
+	sort.Strings(headerKeys)
+
+	for _, key := range headerKeys {
+		keyValue := key + ": " + headers[key] + "\r\n"
+		if _, err := bw.WriteString(keyValue); err != nil {
+			return err
+		}
+	}
+	if _, err := bw.WriteString("\r\n"); err != nil {
+		return err
+	}
+
+	filePath := res.FilePath
+	if len(filePath) > 0 {
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return err
+		}
+		if _, err := bw.Write(data); err != nil {
+			return err
+		}
+	}
+	if err := bw.Flush(); err != nil {
+		// log.Println("Flush error: ", err)
+		return nil
+	}
+	return nil
 }
