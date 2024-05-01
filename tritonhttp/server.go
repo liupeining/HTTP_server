@@ -94,18 +94,19 @@ func (s *Server) HandleConnection(conn net.Conn) {
 		fmt.Println("Request: ", req)
 
 		res := &Response{}
+		fmt.Println("Response: ", res)
 		res.Headers = make(map[string]string)
+		fmt.Println("make map: ", res.Headers)
 		// handle "Close" header
-		if req.Close {
+		if req == nil || req.Close {
 			res.Headers["Connection"] = "close"
 		}
-
+		fmt.Println("Connection: ", res.Headers["Connection"])
 		if err != nil {
 			log.Printf("Failed to read request from connection %v", conn)
 
 			// Respond with 400 client error
 			res.HandleBadRequest()
-			res.Headers["Connection"] = "close"
 			//_ = res.Write(conn)
 
 			// check res
