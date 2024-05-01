@@ -98,7 +98,7 @@ func (s *Server) HandleConnection(conn net.Conn) {
 		res.Headers = make(map[string]string)
 		fmt.Println("make map: ", res.Headers)
 		// handle "Close" header
-		if req == nil || req.Close {
+		if req != nil && req.Close {
 			res.Headers["Connection"] = "close"
 		}
 		fmt.Println("Connection: ", res.Headers["Connection"])
@@ -114,7 +114,10 @@ func (s *Server) HandleConnection(conn net.Conn) {
 			_ = conn.Close()
 			return
 		}
-		res.HandleOK()
+		fmt.Println("Request Host: ", req.Host)
+		fmt.Println("Virtual Hosts: ", s.VirtualHosts)
+		fmt.Println("path: ", s.VirtualHosts[req.Host])
+		res.HandleOK(s.VirtualHosts[req.Host], req) // pass the docRoot of the host to HandleOK
 		// check res
 		fmt.Println("Response: ", res)
 	}

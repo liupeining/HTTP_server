@@ -1,6 +1,13 @@
 package tritonhttp
 
-import "time"
+import (
+	"fmt"
+	"mime"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+)
 
 type Response struct {
 	Proto      string // e.g. "HTTP/1.1"
@@ -26,6 +33,7 @@ func (res *Response) HandleBadRequest() {
 	res.StatusText = "Bad Request"
 	if res.Headers == nil {
 		res.Headers = make(map[string]string)
+		res.Headers["Close"] = "close"
 	}
 	res.Headers["Date"] = FormatTime(time.Now())
 }
@@ -37,10 +45,12 @@ func (res *Response) HandleStatusNotFound() {
 	if res.Headers == nil {
 		res.Headers = make(map[string]string)
 	}
+	res.Headers["Close"] = "close"
 	res.Headers["Date"] = FormatTime(time.Now())
 }
 
-func (res *Response) HandleOK() {
+func (res *Response) HandleOK(docRoot string, req *Request) {
+	res.Request = req
 	res.Proto = "HTTP/1.1"
 	res.StatusCode = 200
 	res.StatusText = "OK"
@@ -48,4 +58,25 @@ func (res *Response) HandleOK() {
 		res.Headers = make(map[string]string)
 	}
 	res.Headers["Date"] = FormatTime(time.Now())
+	res.FilePath = docRoot + res.Request.URL
+	fmt.Println("File Path: ", res.FilePath)
+
+	// Check if the file exists
+	if _, err := os.Stat(res.FilePath); os.IsNotExist(err) {
+		res.HandleStatusNotFound()
+		//req.Headers["Close"] = "close"
+		return
+	}
+
+	stats, err := os.Stat(res.FilePath)
+	if err != nil {
+		res.HandleStatusNotFound()
+		//req.Headers["Close"] = "close"
+		return
+	}
+
+	res.Headers["Content-Length"] = strconv.FormatInt(stats.Size(), 10)
+	res.Headers["Content-Type"] = mime.TypeByExtension(filepath.Ext(res.FilePath))
+	res.Headers["Date"] = FormatTime(time.Now())
+	res.Headers["Last-Modified"] = FormatTime(stats.ModTime())
 }
