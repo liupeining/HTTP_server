@@ -100,7 +100,8 @@ func (s *Server) HandleConnection(conn net.Conn) {
 
 // ReadRequest reads and parses a request from the buffered reader.
 func ReadRequest(br *bufio.Reader) (req *Request, err error) {
-	req = &Request{}
+	req = &Request{} // Method, URL, Proto, Headers, Host, Close
+
 	// Read the first line of the request, which contains the method, URL, and protocol
 	// eg. GET /index.html HTTP/1.1
 	firstLine, err := br.ReadString('\n')
@@ -114,9 +115,46 @@ func ReadRequest(br *bufio.Reader) (req *Request, err error) {
 		fmt.Println("Error in parsing first line: ", err)
 		return nil, err
 	}
+
+	// Read the headers of the request - Headers, Host, Close
+	err = parseHeaders(br, req)
+	if err != nil {
+		fmt.Println("Error in parsing headers: ", err)
+		return nil, err
+	}
+
+	// fill Host and Close
+	req.Host = req.Headers["Host"]
+	req.Close = req.Headers["Connection"] == "close"
+
 	// check req
 	fmt.Println("Request: ", req)
 	return req, nil
+}
+
+func parseHeaders(br *bufio.Reader, req *Request) error {
+	for {
+		line, err := br.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error in reading line: ", err)
+			return err
+		}
+		fmt.Println("Line: ", line)
+		line = strings.TrimSpace(line)
+		if line == "" {
+			break
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid header: %q", line)
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		fmt.Println("Key: ", key, "Value: ", value)
+		req.Headers = make(map[string]string)
+		req.Headers[key] = value
+	}
+	return nil
 }
 
 func parseFirstLine(firstLine string, req *Request) error {
