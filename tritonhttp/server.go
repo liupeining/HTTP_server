@@ -88,12 +88,34 @@ func (s *Server) HandleConnection(conn net.Conn) {
 		}
 
 		// Read request from the client
-		_, err := ReadRequest(br)
+		req, err := ReadRequest(br)
+
+		// check req
+		fmt.Println("Request: ", req)
+
+		res := &Response{}
+		res.Headers = make(map[string]string)
+		// handle "Close" header
+		if req.Close {
+			res.Headers["Connection"] = "close"
+		}
+
 		if err != nil {
 			log.Printf("Failed to read request from connection %v", conn)
+
+			// Respond with 400 client error
+			res.HandleBadRequest()
+			res.Headers["Connection"] = "close"
+			//_ = res.Write(conn)
+
+			// check res
+			fmt.Println("Response: ", res)
 			_ = conn.Close()
 			return
 		}
+		res.HandleOK()
+		// check res
+		fmt.Println("Response: ", res)
 	}
 
 }
@@ -127,8 +149,6 @@ func ReadRequest(br *bufio.Reader) (req *Request, err error) {
 	req.Host = req.Headers["Host"]
 	req.Close = req.Headers["Connection"] == "close"
 
-	// check req
-	fmt.Println("Request: ", req)
 	return req, nil
 }
 
