@@ -44,18 +44,12 @@ func (s *Server) ListenAndServe() error {
 	if err := s.ValidateServerSetup(); err != nil {
 		return fmt.Errorf("server is not setup correctly %v", err)
 	}
-	addr := "localhost" + s.Addr
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp", "localhost"+s.Addr)
 	if err != nil {
-		return fmt.Errorf("error in listening on : %v", addr, err)
+		return fmt.Errorf("listening error: %v", err)
 	}
-	fmt.Println("Listening on", ln.Addr())
-	defer func() {
-		err = ln.Close()
-		if err != nil {
-			fmt.Println("error in closing listener", err)
-		}
-	}()
+	defer ln.Close()
+	log.Printf("Listening on %s", ln.Addr())
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -69,13 +63,7 @@ func (s *Server) ListenAndServe() error {
 func (s *Server) HandleConnection(conn net.Conn) {
 	br := bufio.NewReader(conn)
 	for {
-		if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
-			log.Printf("Failed to set timeout for connection %v", conn)
-			_ = conn.Close()
-			return
-		}
-		// Read request from the client
-		var isEOF bool
+		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		req, err, isEOF := ReadRequest(br)
 		if isEOF {
 			_ = conn.Close()
@@ -176,6 +164,5 @@ func parseFirstLine(firstLine string, req *Request) error {
 	if protocol != "HTTP/1.1" {
 		return fmt.Errorf("invalid protocol: %q", parts[2])
 	}
-	req.Proto = protocol
 	return nil
 }
