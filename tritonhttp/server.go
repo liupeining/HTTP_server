@@ -78,6 +78,7 @@ func (s *Server) HandleConnection(conn net.Conn) {
 		var isEOF bool
 		req, err, isEOF := ReadRequest(br)
 		if isEOF {
+			_ = conn.Close()
 			return
 		}
 		fmt.Println("Request: ", req)
@@ -89,6 +90,7 @@ func (s *Server) HandleConnection(conn net.Conn) {
 		}
 		if err != nil {
 			res.HandleBadRequest()
+			fmt.Println("writing response(400)")
 			err = res.Write(conn)
 			if err != nil {
 				fmt.Println("Error in writing response(400): ", err)
@@ -117,11 +119,7 @@ func ReadRequest(br *bufio.Reader) (req *Request, err error, isEOF bool) {
 	// Read the first line of the request, which contains the method, URL, and protocol eg. GET /index.html HTTP/1.1
 	firstLine, err := br.ReadString('\n')
 	if err != nil {
-		if err.Error() == "EOF" {
-			return nil, err, true
-		}
-		fmt.Println("Error in reading first line: ", err)
-		return nil, err, false
+		return nil, err, true
 	}
 	err = parseFirstLine(firstLine, req)
 	if err != nil {
