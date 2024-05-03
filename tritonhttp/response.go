@@ -36,9 +36,10 @@ func (res *Response) HandleBadRequest() {
 	res.StatusText = "Bad Request"
 	if res.Headers == nil {
 		res.Headers = make(map[string]string)
-		res.Headers["Close"] = "close"
+		res.Headers["Connection"] = "close"
 	}
 	res.Headers["Date"] = FormatTime(time.Now())
+	res.FilePath = ""
 }
 
 func (res *Response) HandleStatusNotFound() {
@@ -48,8 +49,10 @@ func (res *Response) HandleStatusNotFound() {
 	if res.Headers == nil {
 		res.Headers = make(map[string]string)
 	}
-	res.Headers["Close"] = "close"
 	res.Headers["Date"] = FormatTime(time.Now())
+	// filePath set to ""
+	res.FilePath = ""
+
 }
 
 func (res *Response) HandleOK(docRoot string, req *Request) {
@@ -72,7 +75,6 @@ func (res *Response) HandleOK(docRoot string, req *Request) {
 	if _, err := os.Stat(res.FilePath); os.IsNotExist(err) {
 		fmt.Println("File does not exist")
 		res.HandleStatusNotFound()
-		//req.Headers["Close"] = "close"
 		return
 	}
 
@@ -80,7 +82,6 @@ func (res *Response) HandleOK(docRoot string, req *Request) {
 	if err != nil {
 		fmt.Println("Error in getting file stats: ", err)
 		res.HandleStatusNotFound()
-		//req.Headers["Close"] = "close"
 		return
 	}
 
