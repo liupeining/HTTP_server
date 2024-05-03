@@ -35,8 +35,8 @@ func (res *Response) HandleBadRequest() {
 	res.StatusText = "Bad Request"
 	if res.Headers == nil {
 		res.Headers = make(map[string]string)
-		res.Headers["Connection"] = "close"
 	}
+	res.Headers["Connection"] = "close"
 	res.Headers["Date"] = FormatTime(time.Now())
 	res.FilePath = ""
 }
@@ -49,7 +49,6 @@ func (res *Response) HandleStatusNotFound() {
 		res.Headers = make(map[string]string)
 	}
 	res.Headers["Date"] = FormatTime(time.Now())
-	// filePath set to ""
 	res.FilePath = ""
 
 }
@@ -64,29 +63,30 @@ func (res *Response) HandleOK(docRoot string, req *Request) {
 	}
 	res.Headers["Date"] = FormatTime(time.Now())
 	res.FilePath = docRoot + res.Request.URL
-	// If URL ends with /, interpret as index.html
 	if res.Request.URL[len(res.Request.URL)-1] == '/' {
 		res.FilePath += "index.html"
 	}
 	fmt.Println("File Path: ", res.FilePath)
 
-	// Check if the file exists
 	if _, err := os.Stat(res.FilePath); os.IsNotExist(err) {
 		fmt.Println("File does not exist")
 		res.HandleStatusNotFound()
 		return
 	}
-
+	// check if the file is a directory
+	if stats, err := os.Stat(res.FilePath); err == nil && stats.IsDir() {
+		fmt.Println("File is a directory")
+		res.HandleStatusNotFound()
+		return
+	}
 	stats, err := os.Stat(res.FilePath)
 	if err != nil {
 		fmt.Println("Error in getting file stats: ", err)
 		res.HandleStatusNotFound()
 		return
 	}
-
 	res.Headers["Content-Length"] = strconv.FormatInt(stats.Size(), 10)
 	res.Headers["Content-Type"] = MIMETypeByExtension(filepath.Ext(res.FilePath))
-	fmt.Println("Content-Type: ", res.Headers["Content-Type"])
 	res.Headers["Date"] = FormatTime(time.Now())
 	res.Headers["Last-Modified"] = FormatTime(stats.ModTime())
 }
@@ -127,7 +127,6 @@ func (res *Response) Write(w io.Writer) error {
 		}
 	}
 	if err := bw.Flush(); err != nil {
-		// log.Println("Flush error: ", err)
 		return nil
 	}
 	return nil
