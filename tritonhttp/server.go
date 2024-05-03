@@ -25,7 +25,6 @@ type Server struct {
 // ValidateServerSetup checks the validity of the docRoot of the server
 func (s *Server) ValidateServerSetup() error {
 	// Validating the doc root of the server
-	// fi, err := os.Stat(s.DocRoot)
 	for _, docRoot := range s.VirtualHosts {
 		fi, err := os.Stat(docRoot)
 		if os.IsNotExist(err) {
@@ -41,30 +40,22 @@ func (s *Server) ValidateServerSetup() error {
 // ListenAndServe listens on the TCP network address s.Addr and then
 // handles requests on incoming connections.
 func (s *Server) ListenAndServe() error {
-
 	// Hint: Validate all docRoots
 	if err := s.ValidateServerSetup(); err != nil {
 		return fmt.Errorf("server is not setup correctly %v", err)
 	}
-	fmt.Println("Server setup valid!")
-
-	// server should now start to listen on the configured address
 	addr := "localhost" + s.Addr
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("error in listening on : %v", addr, err)
 	}
 	fmt.Println("Listening on", ln.Addr())
-
-	// making sure the listener is closed when we exit
 	defer func() {
 		err = ln.Close()
 		if err != nil {
 			fmt.Println("error in closing listener", err)
 		}
 	}()
-
-	// accept connections forever
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -77,8 +68,7 @@ func (s *Server) ListenAndServe() error {
 
 // HandleConnection reads requests from the accepted conn and handles them.
 func (s *Server) HandleConnection(conn net.Conn) {
-	br := bufio.NewReader(conn) // create a new buffered reader, which reads from the connection
-	// continuously read from connection
+	br := bufio.NewReader(conn)
 	for {
 		// Set timeout, if the connection is idle for 5 seconds, close the connection
 		if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
@@ -86,9 +76,13 @@ func (s *Server) HandleConnection(conn net.Conn) {
 			_ = conn.Close()
 			return
 		}
-
 		// Read request from the client
-		req, err := ReadRequest(br)
+		var isEOF bool
+		req, err, isEOF := ReadRequest(br)
+		if isEOF {
+			_ = conn.Close()
+			return
+		}
 		// check req
 		fmt.Println("Request: ", req)
 
@@ -137,35 +131,38 @@ func (s *Server) HandleConnection(conn net.Conn) {
 }
 
 // ReadRequest reads and parses a request from the buffered reader.
-func ReadRequest(br *bufio.Reader) (req *Request, err error) {
+func ReadRequest(br *bufio.Reader) (req *Request, err error, isEOF bool) {
 	req = &Request{} // Method, URL, Proto, Headers, Host, Close
 
 	// Read the first line of the request, which contains the method, URL, and protocol
 	// eg. GET /index.html HTTP/1.1
 	firstLine, err := br.ReadString('\n')
 	if err != nil {
+		if err.Error() == "EOF" {
+			return nil, err, true
+		}
 		fmt.Println("Error in reading first line: ", err)
-		return nil, err
+		return nil, err, false
 	}
 	//fmt.Println("First Line: ", firstLine)
 	err = parseFirstLine(firstLine, req)
 	if err != nil {
 		fmt.Println("Error in parsing first line: ", err)
-		return nil, err
+		return nil, err, false
 	}
 	// Read the headers of the request - Headers, Host, Close
 	req.Headers = make(map[string]string)
 	err = parseHeaders(br, req)
 	if err != nil {
 		fmt.Println("Error in parsing headers: ", err)
-		return nil, err
+		return nil, err, false
 	}
 
 	// fill Host and Close
 	req.Host = req.Headers["Host"]
 	req.Close = req.Headers["Connection"] == "close"
 
-	return req, nil
+	return req, nil, false
 }
 
 func parseHeaders(br *bufio.Reader, req *Request) error {
