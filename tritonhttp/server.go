@@ -125,6 +125,13 @@ func (s *Server) HandleConnection(conn net.Conn) {
 		}
 		// check res
 		fmt.Println("Response: ", res)
+
+		// check if the connection is close (in res), if yes, close the connection
+		if res.Headers["Connection"] == "close" {
+			fmt.Println(">>>>>>>Connection close<<<<<<<<<")
+			_ = conn.Close()
+			return
+		}
 	}
 
 }
