@@ -62,10 +62,15 @@ func (res *Response) HandleOK(docRoot string, req *Request) {
 	}
 	res.Headers["Date"] = FormatTime(time.Now())
 	res.FilePath = docRoot + res.Request.URL
+	// If URL ends with /, interpret as index.html
+	if res.Request.URL[len(res.Request.URL)-1] == '/' {
+		res.FilePath += "index.html"
+	}
 	fmt.Println("File Path: ", res.FilePath)
 
 	// Check if the file exists
 	if _, err := os.Stat(res.FilePath); os.IsNotExist(err) {
+		fmt.Println("File does not exist")
 		res.HandleStatusNotFound()
 		//req.Headers["Close"] = "close"
 		return
@@ -73,6 +78,7 @@ func (res *Response) HandleOK(docRoot string, req *Request) {
 
 	stats, err := os.Stat(res.FilePath)
 	if err != nil {
+		fmt.Println("Error in getting file stats: ", err)
 		res.HandleStatusNotFound()
 		//req.Headers["Close"] = "close"
 		return

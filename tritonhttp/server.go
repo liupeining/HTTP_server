@@ -73,7 +73,6 @@ func (s *Server) ListenAndServe() error {
 		fmt.Println("accepted connection", conn.RemoteAddr())
 		go s.HandleConnection(conn)
 	}
-	return nil
 }
 
 // HandleConnection reads requests from the accepted conn and handles them.
@@ -85,25 +84,27 @@ func (s *Server) HandleConnection(conn net.Conn) {
 		if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
 			log.Printf("Failed to set timeout for connection %v", conn)
 			_ = conn.Close()
+			return
 		}
 
 		// Read request from the client
 		req, err := ReadRequest(br)
-
 		// check req
 		fmt.Println("Request: ", req)
 
 		res := &Response{}
-		fmt.Println("Response: ", res)
+		//fmt.Println("Response: ", res)
 		res.Headers = make(map[string]string)
-		fmt.Println("make map: ", res.Headers)
+		//fmt.Println("make map: ", res.Headers)
+
 		// handle "Close" header
 		if req != nil && req.Close {
 			res.Headers["Connection"] = "close"
+			// TODO: close the connection when response connection is close
 		}
-		fmt.Println("Connection: ", res.Headers["Connection"])
+		//fmt.Println("Connection: ", res.Headers["Connection"])
 		if err != nil {
-			log.Printf("Failed to read request from connection %v", conn)
+			log.Printf("Failed to read valid request from connection %v", conn)
 
 			// Respond with 400 client error
 			res.HandleBadRequest()
@@ -114,11 +115,14 @@ func (s *Server) HandleConnection(conn net.Conn) {
 			_ = conn.Close()
 			return
 		}
-		fmt.Println("Request Host: ", req.Host)
-		fmt.Println("Virtual Hosts: ", s.VirtualHosts)
-		fmt.Println("path: ", s.VirtualHosts[req.Host])
+		//fmt.Println("Request Host: ", req.Host)
+		//fmt.Println("Virtual Hosts: ", s.VirtualHosts)
+		//fmt.Println("path: ", s.VirtualHosts[req.Host])
 		res.HandleOK(s.VirtualHosts[req.Host], req) // pass the docRoot of the host to HandleOK
 		err = res.Write(conn)
+		if err != nil {
+			fmt.Println("Error in writing response: ", err)
+		}
 		// check res
 		fmt.Println("Response: ", res)
 	}
@@ -136,14 +140,14 @@ func ReadRequest(br *bufio.Reader) (req *Request, err error) {
 		fmt.Println("Error in reading first line: ", err)
 		return nil, err
 	}
-	fmt.Println("First Line: ", firstLine)
+	//fmt.Println("First Line: ", firstLine)
 	err = parseFirstLine(firstLine, req)
 	if err != nil {
 		fmt.Println("Error in parsing first line: ", err)
 		return nil, err
 	}
-
 	// Read the headers of the request - Headers, Host, Close
+	req.Headers = make(map[string]string)
 	err = parseHeaders(br, req)
 	if err != nil {
 		fmt.Println("Error in parsing headers: ", err)
@@ -164,7 +168,7 @@ func parseHeaders(br *bufio.Reader, req *Request) error {
 			fmt.Println("Error in reading line: ", err)
 			return err
 		}
-		fmt.Println("Line: ", line)
+		//fmt.Println("Line: ", line)
 		line = strings.TrimSpace(line)
 		if line == "" {
 			break
@@ -175,8 +179,7 @@ func parseHeaders(br *bufio.Reader, req *Request) error {
 		}
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
-		fmt.Println("Key: ", key, "Value: ", value)
-		req.Headers = make(map[string]string)
+		//fmt.Println("Key: ", key, "Value: ", value)
 		req.Headers[key] = value
 	}
 	return nil
@@ -192,14 +195,14 @@ func parseFirstLine(firstLine string, req *Request) error {
 		return fmt.Errorf("invalid method: %q", parts[0])
 	}
 	req.Method = parts[0]
-	fmt.Println("Method: ", req.Method)
+	//fmt.Println("Method: ", req.Method)
 
 	// check if the URL is valid
 	if !strings.HasPrefix(parts[1], "/") {
 		return fmt.Errorf("invalid URL: %q", parts[1])
 	}
 	req.URL = parts[1]
-	fmt.Println("URL: ", req.URL)
+	//fmt.Println("URL: ", req.URL)
 
 	// check if the protocol is valid
 	protocol := strings.TrimSpace(parts[2])
@@ -207,6 +210,6 @@ func parseFirstLine(firstLine string, req *Request) error {
 		return fmt.Errorf("invalid protocol: %q", parts[2])
 	}
 	req.Proto = protocol
-	fmt.Println("Protocol: ", req.Proto)
+	//fmt.Println("Protocol: ", req.Proto)
 	return nil
 }
