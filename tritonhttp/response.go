@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"mime"
 	"os"
 	"path/filepath"
 	"sort"
@@ -86,7 +85,8 @@ func (res *Response) HandleOK(docRoot string, req *Request) {
 	}
 
 	res.Headers["Content-Length"] = strconv.FormatInt(stats.Size(), 10)
-	res.Headers["Content-Type"] = mime.TypeByExtension(filepath.Ext(res.FilePath))
+	res.Headers["Content-Type"] = MIMETypeByExtension(filepath.Ext(res.FilePath))
+	fmt.Println("Content-Type: ", res.Headers["Content-Type"])
 	res.Headers["Date"] = FormatTime(time.Now())
 	res.Headers["Last-Modified"] = FormatTime(stats.ModTime())
 }
