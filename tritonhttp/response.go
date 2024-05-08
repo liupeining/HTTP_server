@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -67,6 +68,14 @@ func (res *Response) HandleOK(docRoot string, req *Request) {
 		res.FilePath += "index.html"
 	}
 	fmt.Println("File Path: ", res.FilePath)
+	// prevent directory traversal
+	res.FilePath = filepath.Clean(res.FilePath) // clean the path, remove any ".." or "." from the path
+	fmt.Println("Cleaned File Path: ", res.FilePath)
+	if !strings.HasPrefix(res.FilePath, docRoot) {
+		fmt.Println("Directory Traversal Detected")
+		res.HandleStatusNotFound()
+		return
+	}
 
 	if _, err := os.Stat(res.FilePath); os.IsNotExist(err) {
 		fmt.Println("File does not exist")
