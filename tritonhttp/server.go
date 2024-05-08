@@ -148,6 +148,8 @@ func parseHeaders(br *bufio.Reader, req *Request) error {
 }
 
 func parseFirstLine(firstLine string, req *Request) error {
+	//trimSpace removes leading and trailing whitespaces for the first line
+	firstLine = strings.TrimSpace(firstLine)
 	parts := strings.Split(firstLine, " ")
 	if len(parts) != 3 {
 		return fmt.Errorf("invalid first line: %q", firstLine)
