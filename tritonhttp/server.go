@@ -142,6 +142,10 @@ func parseHeaders(br *bufio.Reader, req *Request) error {
 		}
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
+		// ensure have valid key and value
+		if key == "" || value == "" {
+			return fmt.Errorf("invalid header: %q", line)
+		}
 		req.Headers[key] = value
 	}
 	return nil
